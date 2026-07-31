@@ -1,3 +1,4 @@
+import gc
 import os
 import re
 
@@ -8,10 +9,27 @@ DOWNLOAD_DIR = "downloads"
 
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
+MAX_DURATION_SECONDS = int(os.getenv("MAX_DURATION_SECONDS", 30 * 60))  # default 30 min
+
 
 def _sanitize_filename(name: str) -> str:
     """Strip characters that break file paths on Windows."""
     return re.sub(r'[\\/*?:"<>|]', "", name).strip()
+
+
+def get_duration_seconds(path: str) -> float:
+    """
+    Return the duration of an audio/video file in seconds.
+
+    Loads and immediately discards the decoded audio -- this still costs
+    memory briefly, but it's freed right away rather than kept around,
+    and lets us reject oversized inputs before running the full pipeline.
+    """
+    audio = AudioSegment.from_file(path)
+    duration = len(audio) / 1000.0
+    del audio
+    gc.collect()
+    return duration
 
 
 def download_youtube_audio(url: str) -> str:
@@ -64,6 +82,9 @@ def convert_to_wav(input_path: str) -> str:
         bitrate="64k"
     )
 
+    del audio
+    gc.collect()
+
     return output_path
 
 
@@ -104,6 +125,12 @@ def chunk_audio(wav_path: str, chunk_minutes: int = 10) -> list:
 
         chunks.append(chunk_path)
 
+       
+        del chunk
+
+    del audio
+    gc.collect()
+
     return chunks
 
 
@@ -122,6 +149,17 @@ def process_input(source: str) -> list:
 
         downloaded_audio = download_youtube_audio(source)
 
+        duration = get_duration_seconds(downloaded_audio)
+        if duration > MAX_DURATION_SECONDS:
+            try:
+                os.remove(downloaded_audio)
+            except Exception:
+                pass
+            raise ValueError(
+                f"Video is {duration / 60:.1f} min long, which exceeds the "
+                f"{MAX_DURATION_SECONDS / 60:.0f} min limit on this deployment."
+            )
+
         print("Converting to 16kHz mono...")
 
         wav_path = convert_to_wav(downloaded_audio)
@@ -134,6 +172,13 @@ def process_input(source: str) -> list:
 
     else:
 
+        duration = get_duration_seconds(source)
+        if duration > MAX_DURATION_SECONDS:
+            raise ValueError(
+                f"File is {duration / 60:.1f} min long, which exceeds the "
+                f"{MAX_DURATION_SECONDS / 60:.0f} min limit on this deployment."
+            )
+
         print("Converting local file to 16kHz mono...")
 
         wav_path = convert_to_wav(source)
@@ -144,9 +189,7 @@ def process_input(source: str) -> list:
 
     print(f"Created {len(chunks)} chunk(s).")
 
-    # wav_path has now been fully split into `chunks` -- the full-length
-    # copy is redundant and just takes up disk space, which matters on
-    # hosted deployments with limited/ephemeral storage.
+   
     try:
         os.remove(wav_path)
     except Exception:

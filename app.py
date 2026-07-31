@@ -8,6 +8,7 @@ open questions, and a RAG chatbot grounded in the transcript.
 import os
 import time
 from datetime import datetime
+import gc
 
 import streamlit as st
 from dotenv import load_dotenv
@@ -202,6 +203,7 @@ if process_clicked and source:
             status.update(label=f"📝 Transcribing {len(chunks)} chunk(s)...")
             transcript = transcribe_all(chunks, language=language)
             cleanup_chunks(chunks)
+            gc.collect()
 
             status.update(label="🏷️ Generating title...")
             title = generate_title(transcript)
