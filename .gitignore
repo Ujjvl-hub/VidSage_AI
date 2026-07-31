@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+
+# Virtual Environment
+.venv/
+venv/
+
+# Environment Variables
+.env
+
+# Vector Database
+vector_db/
+
+# Streamlit Cache
+.streamlit/
+
+# IDE
+.vscode/
+
+# macOS
+.DS_Store
+
+# Generated files
+downloads/
+vector_db/
