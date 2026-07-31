@@ -45,3 +45,4 @@ python-dotenv>=1.0.1
 tiktoken>=0.7.0
 numpy>=1.26.4
 pandas>=2.2.2
+audioop-lts; python_version >= "3.13"
