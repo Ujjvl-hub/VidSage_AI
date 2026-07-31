@@ -51,6 +51,17 @@ def download_youtube_audio(url: str) -> str:
         ],
         "quiet": True,
         "restrictfilenames": True,
+        # YouTube aggressively blocks requests from cloud/datacenter IPs
+        # (Streamlit Cloud, Render, etc.) when using the default web
+        # client. Forcing the android client mimics the YouTube mobile
+        # app's request signature, which avoids most 403 Forbidden /
+        # bot-detection blocks seen when yt-dlp is run from hosted
+        # environments.
+        "extractor_args": {
+            "youtube": {
+                "player_client": ["android"],
+            }
+        },
     }
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -82,6 +93,9 @@ def convert_to_wav(input_path: str) -> str:
         bitrate="64k"
     )
 
+    # Release the decoded audio buffer as soon as we're done with it --
+    # pydub holds the entire file in memory, so this matters on
+    # RAM-constrained hosts.
     del audio
     gc.collect()
 
@@ -125,7 +139,8 @@ def chunk_audio(wav_path: str, chunk_minutes: int = 10) -> list:
 
         chunks.append(chunk_path)
 
-       
+        # Each slice is a separate in-memory copy -- drop it once exported
+        # rather than letting them all accumulate until the loop ends.
         del chunk
 
     del audio
@@ -189,7 +204,6 @@ def process_input(source: str) -> list:
 
     print(f"Created {len(chunks)} chunk(s).")
 
-   
     try:
         os.remove(wav_path)
     except Exception:
