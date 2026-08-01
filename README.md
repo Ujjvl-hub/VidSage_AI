@@ -18,14 +18,6 @@
 
 ---
 
-## 🚀 Live Demo
-
-🔗 **Coming Soon**
-
-> *(Update this section with your Streamlit deployment URL once deployed.)*
-
----
-
 # 📖 Overview
 
 VidSage AI is an intelligent video assistant that helps users extract valuable insights from YouTube videos, online lectures, podcasts, webinars, and recorded meetings.
